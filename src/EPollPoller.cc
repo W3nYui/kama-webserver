@@ -10,10 +10,10 @@ const int kNew = -1;    // 某个channel还没添加至Poller          // channe
 const int kAdded = 1;   // 某个channel已经添加至Poller
 const int kDeleted = 2; // 某个channel已经从Poller删除
 
-EPollPoller::EPollPoller(EventLoop *loop)
-    : Poller(loop)
+EPollPoller::EPollPoller(EventLoop *loop) // 构造函数函数
+    : Poller(loop) // 利用基类Poller的构造函数 来创建EPollPoller对象 以实现IO复用的具体实现的多态
     , epollfd_(::epoll_create1(EPOLL_CLOEXEC)) 
-    , events_(kInitEventListSize) // vector<epoll_event>(16)
+    , events_(kInitEventListSize) // vector<epoll_event>(16) 初始化大小为16，这是一个存放epoll_wait返回的所有发生的事件的文件描述符事件集
 {
     if (epollfd_ < 0)
     {
@@ -23,40 +23,41 @@ EPollPoller::EPollPoller(EventLoop *loop)
 
 EPollPoller::~EPollPoller()
 {
-    ::close(epollfd_);
+    ::close(epollfd_); // 析构函数 由于是系统资源 需要手动销毁 epoll 实例，归还资源
 }
 
 Timestamp EPollPoller::poll(int timeoutMs, ChannelList *activeChannels)
 {
     // 由于频繁调用poll 实际上应该用LOG_DEBUG输出日志更为合理 当遇到并发场景 关闭DEBUG日志提升效率
     LOG_INFO<<"fd total count:"<<channels_.size();
-
+    // 这句话的意思是：调用epoll_wait函数 使epollfd_这一实例从events_的开始，复制并监听最多该数组大小的事件，并最多等待timeoutMs毫秒
+    // 返回监听得到的事件数量 numEvents
     int numEvents = ::epoll_wait(epollfd_, &*events_.begin(), static_cast<int>(events_.size()), timeoutMs);
-    int saveErrno = errno;
-    Timestamp now(Timestamp::now());
-
+    int saveErrno = errno; // 由于epoll_wait可能被信号中断而返回-1，此时errno会被设置为EINTR。为了避免在处理错误时误判为其他错误，将errno的值保存到saveErrno变量中，以便后续检查和处理。
+    Timestamp now(Timestamp::now()); // 获取当前时间戳 以便于后续处理事件时能够知道事件发生的时间点
+    // 如果监听到的时间数量大于0 则有事件发生 需要对channel进行填充
     if (numEvents > 0)
     {
         LOG_INFO<<"events happend"<<numEvents; // LOG_DEBUG最合理
         fillActiveChannels(numEvents, activeChannels);
-        if (numEvents == events_.size()) // 扩容操作
+        if (numEvents == events_.size()) // 扩容操作 避免数组太小 监听不到更多的事件
         {
             events_.resize(events_.size() * 2);
         }
     }
-    else if (numEvents == 0)
+    else if (numEvents == 0) // 没有事件发生 监听超时 日志返回
     {
         LOG_DEBUG<<"timeout!";
     }
-    else
+    else // 监听出错 根据返回类型
     {
-        if (saveErrno != EINTR)
+        if (saveErrno != EINTR) // 说明不是被信号中断 而是其他错误 记录日志
         {
-            errno = saveErrno;
+            errno = saveErrno; // 恢复errno的值 以便于后续处理错误时能够正确识别错误类型
             LOG_ERROR<<"EPollPoller::poll() error!";
         }
     }
-    return now;
+    return now; // 返回当前时间戳
 }
 
 // channel update remove => EventLoop updateChannel removeChannel => Poller updateChannel removeChannel

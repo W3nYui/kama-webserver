@@ -10,7 +10,8 @@
 #include <Poller.h>
 
 // 防止一个线程创建多个EventLoop
-thread_local EventLoop *t_loopInThisThread = nullptr;
+thread_local EventLoop *t_loopInThisThread = nullptr; // 初始化一个线程局部变量 占用EventLoop对象的线程id 
+// 同时由于EventLoop继承了noncopyable类 禁止了拷贝与复制构造 所以一个线程只能有一个EventLoop对象
 
 // 定义默认的Poller IO复用接口的超时时间
 const int kPollTimeMs = 10000; // 10000毫秒 = 10秒钟
@@ -33,29 +34,32 @@ const int kPollTimeMs = 10000; // 10000毫秒 = 10秒钟
 // 创建wakeupfd 用来notify唤醒subReactor处理新来的channel
 int createEventfd()
 {
-    int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-    if (evtfd < 0)
+    int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC); // 非阻塞 且 执行fork时父进程中的描述符会自动关闭，子进程中的描述符保留
+    if (evtfd < 0) // 非法的文件描述符 说明创建失败了
     {
         LOG_FATAL<<"eventfd error:%d"<<errno;
     }
     return evtfd;
 }
-
+/**
+ * @brief 构造函数
+ * 
+ */
 EventLoop::EventLoop()
     : looping_(false)
     , quit_(false)
     , callingPendingFunctors_(false)
-    , threadId_(CurrentThread::tid())
-    , poller_(Poller::newDefaultPoller(this))
-    , wakeupFd_(createEventfd())
-    , wakeupChannel_(new Channel(this, wakeupFd_))
+    , threadId_(CurrentThread::tid()) // 构造时记录/获取当前线程id 以标识当前EventLoop所属线程
+    , poller_(Poller::newDefaultPoller(this)) // 构造EventLoop对象时就创建一个属于自己的Poller对象 调用Poller的静态工厂方法 newDefaultPoller() 传入当前EventLoop对象的指针 this 以便于Poller对象能够访问当前EventLoop对象的地址作为保护
+    , wakeupFd_(createEventfd()) // 构造EventLoop对象时就创建一个wakeupFd_ 用来唤醒loop所在的线程
+    , wakeupChannel_(new Channel(this, wakeupFd_)) // 构造EventLoop对象时就创建一个wakeupChannel_ 用来监听wakeupFd_的事件
 {
     LOG_DEBUG<<"EventLoop created"<<this<<"in thread"<<threadId_;
-    if (t_loopInThisThread)
+    if (t_loopInThisThread) // 如果当前线程已经有一个EventLoop了 就直接报错 因为一个线程只能有一个EventLoop
     {
         LOG_FATAL<<"Another EventLoop"<<t_loopInThisThread<<"exists in this thread "<<threadId_;
     }
-    else
+    else // 将当前县城内创建的EventLoop对象赋值给线程局部变量t_loopInThisThread 以标识当前线程已经有一个EventLoop了
     {
         t_loopInThisThread = this;
     }
@@ -76,13 +80,15 @@ EventLoop::~EventLoop()
 // 开启事件循环
 void EventLoop::loop()
 {
-    looping_ = true;
+    // 为了线程安全 都是原子的
+    looping_ = true; // 单线程循环 当loop()函数被调用时 looping_被置为true 之后在loop()函数的while循环中只要quit_为false 就一直循环下去 直到quit_被置为true 循环才会退出
     quit_ = false;
 
     LOG_INFO<<"EventLoop start looping";
 
     while (!quit_)
     {
+        // 清空activeChannels_ 因为每次循环都要重新填充activeChannels_ 以返回Poller检测到当前有事件发生的所有Channel列表
         activeChannels_.clear();
         pollRetureTime_ = poller_->poll(kPollTimeMs, &activeChannels_);
         for (Channel *channel : activeChannels_)
@@ -153,7 +159,10 @@ void EventLoop::queueInLoop(Functor cb)
         wakeup(); // 唤醒loop所在线程
     }
 }
-
+/**
+ * @brief 处理读事件
+ * 是wakeupFd_的可读事件处理器。当其他线程需要唤醒EventLoop时，会向wakeupFd_写入一个字节（通常通过EventLoop::wakeup()方法实现）。
+ */
 void EventLoop::handleRead()
 {
     uint64_t one = 1;

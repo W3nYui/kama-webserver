@@ -15,7 +15,7 @@
 
 class Channel;
 
-class EPollPoller : public Poller
+class EPollPoller : public Poller // 继承于Poller类 实现了Poller类的纯虚函数 以实现IO复用的具体实现的多态
 {
 public:
     EPollPoller(EventLoop *loop);

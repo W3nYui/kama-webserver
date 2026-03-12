@@ -23,6 +23,7 @@ public:
     std::string toString()const;
     
     //格式, "%4d年%02d月%02d日 星期%d %02d:%02d:%02d.%06d",时分秒.微秒
+    // 初始值为false,不显示微秒
     std::string toFormattedString(bool showMicroseconds = false) const;
 
     //返回当前时间戳的微妙
