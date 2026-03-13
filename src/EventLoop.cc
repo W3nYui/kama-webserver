@@ -59,7 +59,7 @@ EventLoop::EventLoop()
     {
         LOG_FATAL<<"Another EventLoop"<<t_loopInThisThread<<"exists in this thread "<<threadId_;
     }
-    else // 将当前县城内创建的EventLoop对象赋值给线程局部变量t_loopInThisThread 以标识当前线程已经有一个EventLoop了
+    else // 将当前线程内创建的EventLoop对象赋值给线程局部变量t_loopInThisThread 以标识当前线程已经有一个EventLoop了
     {
         t_loopInThisThread = this;
     }

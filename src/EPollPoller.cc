@@ -26,6 +26,7 @@ EPollPoller::~EPollPoller()
     ::close(epollfd_); // 析构函数 由于是系统资源 需要手动销毁 epoll 实例，归还资源
 }
 
+// poll函数是EPollPoller的核心函数 负责监听事件并返回发生事件的channel列表
 Timestamp EPollPoller::poll(int timeoutMs, ChannelList *activeChannels)
 {
     // 由于频繁调用poll 实际上应该用LOG_DEBUG输出日志更为合理 当遇到并发场景 关闭DEBUG日志提升效率
@@ -66,30 +67,30 @@ void EPollPoller::updateChannel(Channel *channel)
     const int index = channel->index();
     LOG_INFO<<"func =>"<<"fd"<<channel->fd()<<"events="<<channel->events()<<"index="<<index;
 
-    if (index == kNew || index == kDeleted)
+    if (index == kNew || index == kDeleted) 
     {
-        if (index == kNew)
+        if (index == kNew) // 该channel还没有在poller中注册过 即index = -1
         {
-            int fd = channel->fd();
-            channels_[fd] = channel;
+            int fd = channel->fd(); // 获取channel的fd
+            channels_[fd] = channel; // 将channel添加到channels_中 以便于后续通过fd能够找到channel通道
         }
-        else // index == kDeleted
-        {
+        else // 该index在channel中已经被注册过 但是已经从该poller中删除了 即index = 2
+        { // 不做任何处理 重新添加到poller中
         }
-        channel->set_index(kAdded);
+        channel->set_index(kAdded); // 将该channel设置为已注册且添加到poller中 即index = 1
         update(EPOLL_CTL_ADD, channel);
     }
     else // channel已经在Poller中注册过了
     {
-        int fd = channel->fd();
-        if (channel->isNoneEvent())
+        int fd = channel->fd(); // 获取channel的fd 以便于通过fd能够找到channel通道
+        if (channel->isNoneEvent()) // 如果该channel不再关注任何事件了 就从poller中删除掉
         {
-            update(EPOLL_CTL_DEL, channel);
+            update(EPOLL_CTL_DEL, channel); // 从poller中删除掉该channel 即index = 2
             channel->set_index(kDeleted);
         }
         else
         {
-            update(EPOLL_CTL_MOD, channel);
+            update(EPOLL_CTL_MOD, channel); // 该channel仍然关注事件 但是事件发生了变化 需要修改poller中该channel的事件
         }
     }
 }
@@ -115,8 +116,8 @@ void EPollPoller::fillActiveChannels(int numEvents, ChannelList *activeChannels)
 {
     for (int i = 0; i < numEvents; ++i)
     {
-        Channel *channel = static_cast<Channel *>(events_[i].data.ptr);
-        channel->set_revents(events_[i].events);
+        Channel *channel = static_cast<Channel *>(events_[i].data.ptr); // 获取活跃的channel通道
+        channel->set_revents(events_[i].events); // 将当前channel发生的时间保存在channel的revents_中 以便于后续处理事件时能够知道事件发生的类型
         activeChannels->push_back(channel); // EventLoop就拿到了它的Poller给它返回的所有发生事件的channel列表了
     }
 }
@@ -130,7 +131,8 @@ void EPollPoller::update(int operation, Channel *channel)
     int fd = channel->fd();
 
     event.events = channel->events();
-    event.data.fd = fd;
+    event.data.fd = fd; // 无效设置 因为 event.data.ptr = channel;在后面 会覆盖event.data.fd = fd
+    // fd就被隐藏掉了 取而代之的是channel的指针 不需要再查找哈希表
     event.data.ptr = channel;
 
     if (::epoll_ctl(epollfd_, operation, fd, &event) < 0)
