@@ -18,7 +18,7 @@ public:
     using EventCallback = std::function<void()>; // muduo仍使用typedef
     using ReadEventCallback = std::function<void(Timestamp)>;
 
-    Channel(EventLoop *loop, int fd);
+    Channel(EventLoop *loop, int fd); // channel在创建时会获取上层的loop与监听fd 在 poller注册时就可以调用到
     ~Channel();
 
     // fd得到Poller通知以后 处理事件 handleEvent在EventLoop::loop()中调用

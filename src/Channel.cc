@@ -10,12 +10,12 @@ const int Channel::kWriteEvent = EPOLLOUT; //写事件
 
 // EventLoop: ChannelList Poller
 Channel::Channel(EventLoop *loop, int fd)
-    : loop_(loop)
-    , fd_(fd)
-    , events_(0)
-    , revents_(0)
-    , index_(-1)
-    , tied_(false)
+    : loop_(loop) // 从上层传递当前 EventLoop
+    , fd_(fd) // Poller需要监听的对象
+    , events_(0) // 关注事件初始化
+    , revents_(0) // poller返回事件初始化
+    , index_(-1) // 当前channel状态标志位 因为还没有被注册 因此置为-1 即KNew
+    , tied_(false) // 用于解决 tcp 与 channel 的析构关系
 {
 }
 
@@ -42,7 +42,7 @@ void Channel::tie(const std::shared_ptr<void> &obj)
 void Channel::update()
 {
     // 通过channel所属的eventloop，调用poller的相应方法，注册fd的events事件
-    loop_->updateChannel(this);
+    loop_->updateChannel(this); // 从loop -> cahnnel -> loop-> poller 的注册方式 构造后又回传
 }
 
 // 在channel所属的EventLoop中把当前的channel删除掉
