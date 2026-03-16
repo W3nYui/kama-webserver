@@ -64,16 +64,16 @@ EventLoop::EventLoop()
         t_loopInThisThread = this;
     }
     
-    wakeupChannel_->setReadCallback(
-        std::bind(&EventLoop::handleRead, this)); // 设置wakeupfd的事件类型以及发生事件后的回调操作
+    wakeupChannel_->setReadCallback( // 设定当前loop创建的fd的读事件回调函数为EventLoop::handleRead 以便于当其他线程调用EventLoop::wakeup()向wakeupFd_写入数据时
+        std::bind(&EventLoop::handleRead, this)); //  当前loop所在的线程就会被唤醒 从而执行handleRead()函数 读wakeupFd_的8字节 同时唤醒阻塞的epoll_wait
     
-    wakeupChannel_->enableReading(); // 每一个EventLoop都将监听wakeupChannel_的EPOLL读事件了
+    wakeupChannel_->enableReading(); // EventLoop需要打开wakeupchannel的读事件 以便于读取到唤醒时进行处理
 }
 EventLoop::~EventLoop()
 {
     wakeupChannel_->disableAll(); // 给Channel移除所有感兴趣的事件
-    wakeupChannel_->remove();     // 把Channel从EventLoop上删除掉
-    ::close(wakeupFd_);
+    wakeupChannel_->remove();     // 当前eventloop被析构 说明不需要监听了 因此调用channel的remove 从poller中删除掉当前channel
+    ::close(wakeupFd_);     // 将fd从epoll中取消监听后 还需要关闭fd 释放系统资源
     t_loopInThisThread = nullptr;
 }
 
@@ -90,7 +90,7 @@ void EventLoop::loop()
     {
         // 清空activeChannels_ 因为每次循环都要重新填充activeChannels_ 以返回Poller检测到当前有事件发生的所有Channel列表
         activeChannels_.clear();
-        pollRetureTime_ = poller_->poll(kPollTimeMs, &activeChannels_);
+        pollRetureTime_ = poller_->poll(kPollTimeMs, &activeChannels_); // 调用Poller的方法进行poll
         for (Channel *channel : activeChannels_)
         {
             // Poller监听哪些channel发生了事件 然后上报给EventLoop 通知channel处理相应的事件
@@ -122,7 +122,7 @@ void EventLoop::quit()
 {
     quit_ = true;
 
-    if (!isInLoopThread())
+    if (!isInLoopThread()) // 如果不是当前EventLoop所属线程中调用quit退出EventLoop 需要唤醒EventLoop所属线程的epoll_wait
     {
         wakeup();
     }
@@ -137,7 +137,7 @@ void EventLoop::runInLoop(Functor cb)
     }
     else // 在非当前EventLoop线程中执行cb，就需要唤醒EventLoop所在线程执行cb
     {
-        queueInLoop(cb);
+        queueInLoop(cb); // 如果不在当前EventLoop 调用存储函数
     }
 }
 
@@ -156,7 +156,7 @@ void EventLoop::queueInLoop(Functor cb)
      **/
     if (!isInLoopThread() || callingPendingFunctors_)
     {
-        wakeup(); // 唤醒loop所在线程
+        wakeup(); // 唤醒loop所在线程 如果当前Event正在执行回调 即callingPendingFunctors_ = true，就需要调用wakeup() 让其继续执行
     }
 }
 /**
@@ -206,7 +206,7 @@ void EventLoop::doPendingFunctors()
     callingPendingFunctors_ = true;
 
     {
-        std::unique_lock<std::mutex> lock(mutex_);
+        std::unique_lock<std::mutex> lock(mutex_); // 保护EventLoop内的pendingFunctors_
         functors.swap(pendingFunctors_); // 交换的方式减少了锁的临界区范围 提升效率 同时避免了死锁 如果执行functor()在临界区内 且functor()中调用queueInLoop()就会产生死锁
     }
 

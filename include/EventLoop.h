@@ -87,7 +87,7 @@ private:
     std::atomic_bool looping_; // 原子操作 底层通过CAS实现
     std::atomic_bool quit_;    // 标识退出loop循环
 
-    const pid_t threadId_; // 记录当前EventLoop是被哪个线程id创建的 即标识了当前EventLoop的所属线程id
+    const pid_t threadId_; // 标识了当前EventLoop的所属线程id
 
     Timestamp pollRetureTime_; // Poller返回发生事件的Channels的时间点
     std::unique_ptr<Poller> poller_;
