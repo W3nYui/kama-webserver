@@ -111,7 +111,7 @@ void EPollPoller::removeChannel(Channel *channel)
     channel->set_index(kNew);
 }
 
-// 填写活跃的连接
+// 按照顺序 在activeChannels列表内 填写活跃的channel及其对应发生的事件类型
 void EPollPoller::fillActiveChannels(int numEvents, ChannelList *activeChannels) const
 {
     for (int i = 0; i < numEvents; ++i)
@@ -125,12 +125,12 @@ void EPollPoller::fillActiveChannels(int numEvents, ChannelList *activeChannels)
 // 更新channel通道 其实就是调用epoll_ctl add/mod/del
 void EPollPoller::update(int operation, Channel *channel)
 {
-    epoll_event event;
+    epoll_event event; // 定义一个epoll_event结构体变量 用于设置epoll_ctl的参数 告知该epoll需要监听的事件类型、目标(文件描述符)、用户自定义数据(channel地址)
     ::memset(&event, 0, sizeof(event));
 
     int fd = channel->fd();
 
-    event.events = channel->events();
+    event.events = channel->events(); // 将channel中设置的 关注的事件 注册到 epollfd_中
     event.data.fd = fd; // 无效设置 因为 event.data.ptr = channel;在后面 会覆盖event.data.fd = fd
     // fd就被隐藏掉了 取而代之的是channel的指针 不需要再查找哈希表
     event.data.ptr = channel;

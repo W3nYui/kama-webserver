@@ -66,9 +66,9 @@ private:
 
     EventLoop *loop_; // 事件循环
     const int fd_;    // fd，Poller监听的对象
-    int events_;      // 注册fd感兴趣的事件
+    int events_;      // 注册fd感兴趣的事件设置
     int revents_;     // Poller返回的具体发生的事件
-    int index_;
+    int index_;     // 当前channel(其代表的fd)在Poller中的状态 0未添加 1已添加 2已删除
 
     std::weak_ptr<void> tie_;
     bool tied_;
