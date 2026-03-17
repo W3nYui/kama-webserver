@@ -6,7 +6,7 @@
 #include <string>
 #include <errno.h>
 #include "LogStream.h"
-#include<functional>
+#include <functional>
 #include "Timestamp.h"
 
 #define OPEN_LOGGING
@@ -36,7 +36,7 @@ public:
 class Logger
 {
 public:
-   enum LogLevel
+   enum LogLevel // level 的枚举类型
     {
         TRACE,
         DEBUG,

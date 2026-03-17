@@ -3,8 +3,8 @@
 #include <string>
 // 类的前置声明
 class AsyncLogging;
-constexpr int kSmallBufferSize = 4000;
-constexpr int kLargeBufferSize = 4000 * 1000;
+constexpr int kSmallBufferSize = 4000; // 4KB 因为定义的数组是char型 一个char占一个字节 所以是4KB
+constexpr int kLargeBufferSize = 4000 * 1000; // 4MB
 
 // 固定的缓冲区类，用于管理日志数据的存储
 // 该类提供了一个固定大小的缓冲区，允许将数据追加到缓冲区中，并提供相关的操作方法
@@ -13,7 +13,7 @@ class FixedBuffer : noncopyable
 {
 public:
     // 构造函数，初始化当前指针为缓冲区的起始位置
-    FixedBuffer()
+    FixedBuffer() // 构造函数 初始化列表
         : cur_(data_), size_(0)
     {
     }
@@ -63,5 +63,5 @@ public:
 private:
     char data_[buffer_size]; // 定义固定大小的缓冲区
     char *cur_;              // 当前指针，指向缓冲区中下一个可写入的位置
-    int size_;               // 缓冲区的大小
+    int size_;               // 缓冲区的占用大小
 };

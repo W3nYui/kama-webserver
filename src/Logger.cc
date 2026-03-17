@@ -95,7 +95,7 @@ void Logger::Impl::finish()
 Logger::Logger(const char *filename, int line, LogLevel level) : impl_(level, 0, filename, line)
 {
 }
-Logger::~Logger()
+Logger::~Logger() // 每次都是注册 写入 析构
 {
     impl_.finish();
     const LogStream::Buffer &buffer = stream().buffer();

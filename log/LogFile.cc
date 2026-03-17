@@ -16,7 +16,7 @@ LogFile::LogFile(const std::string &basename,
 LogFile::~LogFile() = default;
 void LogFile::append(const char *data, int len)
 {
-    std::lock_guard<std::mutex> lg(mutex_);
+    std::lock_guard<std::mutex> lg(mutex_); // 线程安全
     appendInlock(data, len);
 }
 void LogFile::flush()
@@ -27,15 +27,15 @@ void LogFile::flush()
 bool LogFile::rollFile()
 {
     time_t now = 0;
-    std::string filename = getLogFileName(basename_, &now);
+    std::string filename = getLogFileName(basename_, &now); // 上文回传路径地址 获得新的文件名称
     time_t start = now / kRollPerSeconds_ * kRollPerSeconds_;
-    if (now > lastRoll_)
+    if (now > lastRoll_) // 避免同一秒重复创建文件(滚动)
     {
         lastFlush_ = now;
         lastRoll_ = now;
         startOfPeriod_ = start;
         // 让file_指向一个名为filename的文件，相当于新建了一个文件，但是rollfile一次就会创建一共file对象去将数据写到日志文件中
-        file_.reset(new FileUtil(filename));
+        file_.reset(new FileUtil(filename)); // reset会先调用之前指向的析构 然后将新的FileUtil对象的指针赋值给file_，实现了资源的自动管理
         return true;
     }
     return false;
@@ -62,10 +62,10 @@ void LogFile::appendInlock(const char *data, int len)
     file_->append(data, len);
 
     time_t now = time(NULL); // 当前时间
-    ++count_;
+    ++count_; // 写入次数计数
 
     // 1. 判断是否需要滚动日志
-    if (file_->writtenBytes() > rollsize_)
+    if (file_->writtenBytes() > rollsize_) // 文件过大 需要滚动日志
     {
         rollFile();
     }
@@ -74,7 +74,7 @@ void LogFile::appendInlock(const char *data, int len)
         count_ = 0;
 
         // 基于时间周期滚动日志
-        time_t thisPeriod = now / kRollPerSeconds_ * kRollPerSeconds_;
+        time_t thisPeriod = now / kRollPerSeconds_ * kRollPerSeconds_; // 天的算法 过了一天就要写入
         if (thisPeriod != startOfPeriod_)
         {
             rollFile();

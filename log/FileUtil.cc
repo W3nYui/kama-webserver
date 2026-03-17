@@ -40,7 +40,7 @@ void FileUtil::append(const char *data, size_t len)
 
 void FileUtil::flush()
 {
-    ::fflush(file_);
+    ::fflush(file_); // 系统调用fflush()函数将缓冲区中的数据强制写入文件，确保数据被及时保存到磁盘中
 }
 // 真正向文件写入数据
 size_t FileUtil::write(const char *data, size_t len)

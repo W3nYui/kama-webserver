@@ -74,6 +74,6 @@ private:
     time_t startOfPeriod_;// 本次写log周期的起始时间(秒)
     time_t lastRoll_;// 上次roll日志文件时间(秒)
     time_t lastFlush_; // 上次flush日志文件时间(秒)
-    std::unique_ptr<FileUtil> file_;
+    std::unique_ptr<FileUtil> file_; // 单独维护一个FileUtil对象，负责实际的文件写入操作，使用智能指针管理资源
     const static int kRollPerSeconds_ = 60*60*24;
 };
