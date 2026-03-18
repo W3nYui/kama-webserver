@@ -18,8 +18,8 @@ public:
     std::string toIpPort() const;
     uint16_t toPort() const;
 
-    const sockaddr_in *getSockAddr() const { return &addr_; }
-    void setSockAddr(const sockaddr_in &addr) { addr_ = addr; }
+    const sockaddr_in *getSockAddr() const { return &addr_; } // 获取socket地址的指针
+    void setSockAddr(const sockaddr_in &addr) { addr_ = addr; } // 设置socket地址
 
 private:
     sockaddr_in addr_;

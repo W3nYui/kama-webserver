@@ -11,7 +11,7 @@ InetAddress::InetAddress(uint16_t port, std::string ip)
     addr_.sin_addr.s_addr = ::inet_addr(ip.c_str());
 }
 
-std::string InetAddress::toIp() const
+std::string InetAddress::toIp() const // 提取IP地址
 {
     // addr_
     char buf[64] = {0};
@@ -19,18 +19,18 @@ std::string InetAddress::toIp() const
     return buf;
 }
 
-std::string InetAddress::toIpPort() const
+std::string InetAddress::toIpPort() const // 提取IP地址和端口号
 {
     // ip:port
     char buf[64] = {0};
     ::inet_ntop(AF_INET, &addr_.sin_addr, buf, sizeof buf);
     size_t end = ::strlen(buf);
     uint16_t port = ::ntohs(addr_.sin_port);
-    sprintf(buf+end, ":%u", port);
+    sprintf(buf+end, ":%u", port); // 利用sprintf进行拼接
     return buf;
 }
 
-uint16_t InetAddress::toPort() const
+uint16_t InetAddress::toPort() const // 提取端口号
 {
     return ::ntohs(addr_.sin_port);
 }

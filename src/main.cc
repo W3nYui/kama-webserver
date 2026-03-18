@@ -80,8 +80,8 @@ int main(int argc,char *argv[]) {
     g_asyncLog = &log;
     Logger::setOutput(asyncLog); // 为Logger设置输出回调, 重新配接输出位置 因此所有的输出都会在logger中加入信息后通过异步输出函数输出到日志文件中
     log.start(); // 开启日志后端线程
-    //第二步启动内存池和LFU缓存
-     // 初始化内存池
+    // 第二步启动内存池和LFU缓存
+    // 初始化内存池
     memoryPool::HashBucket::initMemoryPool();
 
     // 初始化缓存

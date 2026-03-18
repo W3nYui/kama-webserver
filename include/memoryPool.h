@@ -8,9 +8,9 @@
 
 namespace memoryPool
 {
-#define MEMORY_POOL_NUM 64
-#define SLOT_BASE_SIZE 8
-#define MAX_SLOT_SIZE 512
+#define MEMORY_POOL_NUM 64 // 内存池数目
+#define SLOT_BASE_SIZE 8    // 内存池槽大小的基数，槽大小为该基数的倍数
+#define MAX_SLOT_SIZE 512 // 内存池槽大小的上限，超过该上限的内存分配将直接使用new
 
 
 /* 具体内存池的槽大小没法确定，因为每个内存池的槽大小不同(8的倍数)
@@ -23,7 +23,7 @@ struct Slot
 class MemoryPool
 {
 public:
-    MemoryPool(size_t BlockSize = 4096);
+    MemoryPool(size_t BlockSize = 4096); // 默认内存块大小为4KB
     ~MemoryPool();
     
     void init(size_t);
@@ -46,24 +46,24 @@ private:
 };
 
 
-class HashBucket
+class HashBucket // 利用哈希桶管理多个内存池 并提供接口
 {
 public:
     static void initMemoryPool();
     static MemoryPool& getMemoryPool(int index);
 
-    static void* useMemory(size_t size)
+    static void* useMemory(size_t size) // 根据元素大小选取合适的内存池分配内存
     {
         if (size <= 0)
             return nullptr;
         if (size > MAX_SLOT_SIZE) // 大于512字节的内存，则使用new
-            return operator new(size);
+            return operator new(size); // 超过了预分配的内存池管理范围，直接使用new分配内存
 
         // 相当于size / 8 向上取整（因为分配内存只能大不能小
-        return getMemoryPool(((size + 7) / SLOT_BASE_SIZE) - 1).allocate();
+        return getMemoryPool(((size + 7) / SLOT_BASE_SIZE) - 1).allocate(); // 调用对应内存池的allocate方法分配内存
     }
 
-    static void freeMemory(void* ptr, size_t size)
+    static void freeMemory(void* ptr, size_t size) // 释放内存
     {
         if (!ptr)
             return;
@@ -73,7 +73,7 @@ public:
             return;
         }
 
-        getMemoryPool(((size + 7) / SLOT_BASE_SIZE) - 1).deallocate(ptr);
+        getMemoryPool(((size + 7) / SLOT_BASE_SIZE) - 1).deallocate(ptr); // 调用对应内存池的deallocate方法释放内存
     }
 
     template<typename T, typename... Args> 
@@ -83,12 +83,13 @@ public:
     friend void deleteElement(T* p);
 };
 
-template<typename T, typename... Args>
-T* newElement(Args&&... args)
+// 上面都是工具类的实现 下面是对外开放的接口函数模板
+template<typename T, typename... Args> // 可变参数模板，允许传入任意数量和类型的参数
+T* newElement(Args&&... args) // 类型的完美转发，保持参数的左值或右值属性
 {
     T* p = nullptr;
     // 根据元素大小选取合适的内存池分配内存
-    if ((p = reinterpret_cast<T*>(HashBucket::useMemory(sizeof(T)))) != nullptr)
+    if ((p = reinterpret_cast<T*>(HashBucket::useMemory(sizeof(T)))) != nullptr) // 使用内存池获取内存 并重新定义指针类型
         // 在分配的内存上构造对象
         new(p) T(std::forward<Args>(args)...);
 
