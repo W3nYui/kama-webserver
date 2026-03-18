@@ -8,7 +8,7 @@
 
 static int createNonblocking()
 {
-    int sockfd = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, IPPROTO_TCP);
+    int sockfd = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, IPPROTO_TCP); // 创建需要监听的socket文件描述符 设置为非阻塞和close-on-exec
     if (sockfd < 0)
     {
          LOG_FATAL << "listen socket create err " << errno;
@@ -24,7 +24,7 @@ Acceptor::Acceptor(EventLoop *loop, const InetAddress &listenAddr, bool reusepor
 {
     acceptSocket_.setReuseAddr(true);
     acceptSocket_.setReusePort(true);
-    acceptSocket_.bindAddress(listenAddr);
+    acceptSocket_.bindAddress(listenAddr); // 绑定监听端口
     // TcpServer::start() => Acceptor.listen() 如果有新用户连接 要执行一个回调(accept => connfd => 打包成Channel => 唤醒subloop)
     // baseloop监听到有事件发生 => acceptChannel_(listenfd) => 执行该回调函数
     acceptChannel_.setReadCallback(
@@ -49,7 +49,7 @@ void Acceptor::handleRead()
 {
     InetAddress peerAddr;
     int connfd = acceptSocket_.accept(&peerAddr);
-    if (connfd >= 0)
+    if (connfd >= 0) // 建立有效连接
     {
         if (NewConnectionCallback_)
         {
@@ -57,7 +57,7 @@ void Acceptor::handleRead()
         }
         else
         {
-            ::close(connfd);
+            ::close(connfd); // 没有回调函数 直接关闭连接
         }
     }
     else

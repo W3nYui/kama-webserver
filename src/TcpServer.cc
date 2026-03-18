@@ -29,7 +29,7 @@ TcpServer::TcpServer(EventLoop *loop,
     , started_(0)
 {
     // 当有新用户连接时，Acceptor类中绑定的acceptChannel_会有读事件发生，执行handleRead()调用TcpServer::newConnection回调
-    acceptor_->setNewConnectionCallback(
+    acceptor_->setNewConnectionCallback( // 绑定回调 建立新的连接回调 允许参数输入sockfd和peerAddr
         std::bind(&TcpServer::newConnection, this, std::placeholders::_1, std::placeholders::_2));
 }
 
@@ -58,7 +58,7 @@ void TcpServer::start()
     if (started_.fetch_add(1) == 0)    // 防止一个TcpServer对象被start多次
     {
         threadPool_->start(threadInitCallback_);    // 启动底层的loop线程池
-        loop_->runInLoop(std::bind(&Acceptor::listen, acceptor_.get()));
+        loop_->runInLoop(std::bind(&Acceptor::listen, acceptor_.get())); // 主Loop开启监听 监听新连接事件
     }
 }
 
@@ -84,11 +84,11 @@ void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr)
     }
 
     InetAddress localAddr(local);
-    TcpConnectionPtr conn(new TcpConnection(ioLoop,
+    TcpConnectionPtr conn(new TcpConnection(ioLoop, // 绑定对应EventLoop
                                             connName,
                                             sockfd,
                                             localAddr,
-                                            peerAddr));
+                                            peerAddr)); // 通过sockfd和本地地址以及对端地址构造TcpConnection对象 该对象会创建一个Channel对象 该Channel对象会绑定sockfd的事件回调函数 handleRead... 该Channel对象会注册到ioLoop的Poller中监听事件发生
     connections_[connName] = conn;
     // 下面的回调都是用户设置给TcpServer => TcpConnection的，至于Channel绑定的则是TcpConnection设置的四个，handleRead,handleWrite... 这下面的回调用于handlexxx函数中
     conn->setConnectionCallback(connectionCallback_);
@@ -100,7 +100,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress &peerAddr)
         std::bind(&TcpServer::removeConnection, this, std::placeholders::_1));
 
     ioLoop->runInLoop(
-        std::bind(&TcpConnection::connectEstablished, conn));
+        std::bind(&TcpConnection::connectEstablished, conn)); // 给从EventLoop绑定一个回调 用于监听到连接建立事件后 执行TcpConnection::connectEstablished回调 该回调会将连接状态设置为已连接 同时调用用户设置的连接建立回调函数
 }
 
 void TcpServer::removeConnection(const TcpConnectionPtr &conn)

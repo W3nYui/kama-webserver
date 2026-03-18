@@ -24,9 +24,9 @@ int createTimerfd()
 }
 
 TimerQueue::TimerQueue(EventLoop* loop)
-    : loop_(loop),
+    : loop_(loop), // 所属的EventLoop
       timerfd_(createTimerfd()),
-      timerfdChannel_(loop_, timerfd_),
+      timerfdChannel_(loop_, timerfd_), // 对定时器实现一个channel封装 以便于监听定时器事件
       timers_()
 {
     timerfdChannel_.setReadCallback(
@@ -46,8 +46,8 @@ TimerQueue::~TimerQueue()
     }
 }
 
-void TimerQueue::addTimer(TimerCallback cb,
-                          Timestamp when,
+void TimerQueue::addTimer(TimerCallback cb, // 回调函数
+                          Timestamp when, // 发生事件的时间点
                           double interval)
 {
     Timer* timer = new Timer(std::move(cb), when, interval);

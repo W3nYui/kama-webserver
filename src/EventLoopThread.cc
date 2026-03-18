@@ -53,4 +53,4 @@ void EventLoopThread::threadFunc()
     loop.loop();    // 执行EventLoop的loop() 开启了底层的Poller的poll()
     std::unique_lock<std::mutex> lock(mutex_);
     loop_ = nullptr;
-}
+} // 当该线程结束 子的EventLoop对象loop的生命周期结束 loop的析构函数会销毁loop对象 进而销毁loop对象中的Poller对象和TimerQueue对象

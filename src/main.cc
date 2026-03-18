@@ -13,7 +13,7 @@ class EchoServer
 {
 public:
     EchoServer(EventLoop *loop, const InetAddress &addr, const std::string &name)
-        : server_(loop, addr, name)
+        : server_(loop, addr, name) // 给TCPServer绑定主EventLoop对象 以及监听地址和服务器名字
         , loop_(loop)
     {
         // 注册回调函数
@@ -49,11 +49,11 @@ private:
     void onMessage(const TcpConnectionPtr &conn, Buffer *buf, Timestamp time)
     {
         std::string msg = buf->retrieveAllAsString();
-        conn->send(msg);
+        conn->send(msg); // 回声 发现可读事件发生时 直接把收到的数据发送回去
         // conn->shutdown();   // 关闭写端 底层响应EPOLLHUP => 执行closeCallback_
     }
-    TcpServer server_;
-    EventLoop *loop_;
+    TcpServer server_; // 在TCP层内构造了EventLoopThreadPool和Acceptor对象
+    EventLoop *loop_; // 主EventLoop对象 由用户创建并传入TCPServer中 TCPServer会把它传给Acceptor和EventLoopThreadPool 以便在合适的时机调用它的runInLoop方法唤醒主线程执行相应的回调函数
 
 };
 AsyncLogging* g_asyncLog = NULL;

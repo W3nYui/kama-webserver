@@ -33,8 +33,8 @@ TcpConnection::TcpConnection(EventLoop *loop,
     , name_(nameArg)
     , state_(kConnecting)
     , reading_(true)
-    , socket_(new Socket(sockfd))
-    , channel_(new Channel(loop, sockfd))
+    , socket_(new Socket(sockfd)) // 对该tcp连接进行socket封装 构造函数会将sockfd设置为非阻塞和close-on-exec
+    , channel_(new Channel(loop, sockfd)) // 构建一个channel 绑定对应fd 这样返回的信息可以找到该channel 同时回调给event
     , localAddr_(localAddr)
     , peerAddr_(peerAddr)
     , highWaterMark_(64 * 1024 * 1024) // 64M
@@ -161,7 +161,7 @@ void TcpConnection::shutdownInLoop()
 void TcpConnection::connectEstablished()
 {
     setState(kConnected);
-    channel_->tie(shared_from_this());
+    channel_->tie(shared_from_this()); // 绑定tcp对象
     channel_->enableReading(); // 向poller注册channel的EPOLLIN读事件
 
     // 新连接建立 执行回调

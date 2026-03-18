@@ -28,7 +28,7 @@ void EventLoopThreadPool::start(const ThreadInitCallback &cb)
 
     if (numThreads_ == 0 && cb) // 整个服务端只有一个线程运行baseLoop
     {
-        cb(baseLoop_);
+        cb(baseLoop_); // 触发设置的回调函数
     }
 }
 
